@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Login from "./components/Login";
 import Tickets from "./pages/Tickets";
 import TicketForm from "./components/TicketForm";
+import TicketDetails from "./pages/TicketDetails";
 import { me } from "./api/auth";
 
 export default function App() {
@@ -11,7 +12,12 @@ export default function App() {
 
     useEffect(() => {
         if (token) {
-            me(token).then((res) => setUser(res.data)).catch(() => setToken(null));
+            me(token)
+                .then((res) => setUser(res.data))
+                .catch(() => {
+                    setToken(null);
+                    setUser(null);
+                });
         }
     }, [token]);
 
@@ -46,7 +52,8 @@ export default function App() {
                 <main className="p-8">
                     <Routes>
                         <Route path="/tickets" element={<Tickets token={token} />} />
-                        <Route path="/tickets/add" element={<TicketForm token={token} />} />
+                        <Route path="/tickets/add" element={<TicketForm token={token} onCreated={() => {}} />} />
+                        <Route path="/tickets/view/:id" element={<TicketDetails token={token} />} />
                         <Route path="*" element={<Navigate to="/tickets" />} />
                     </Routes>
                 </main>

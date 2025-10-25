@@ -1,0 +1,176 @@
+import { useEffect, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
+import { getTicket, getComments, addComment } from "../api/ticket";
+import { me } from "../api/auth";
+import { echo } from "../echo";
+
+export default function TicketDetails({ token }) {
+    const { id } = useParams();
+    const [ticket, setTicket] = useState(null);
+    const [comments, setComments] = useState([]);
+    const [newComment, setNewComment] = useState("");
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const messagesEndRef = useRef(null);
+
+    const fetchTicket = async () => {
+        const res = await getTicket(id, token);
+        setTicket(res.data);
+    };
+
+    const fetchComments = async () => {
+        const res = await getComments(id, token);
+        setComments(res.data);
+    };
+
+    const fetchUser = async () => {
+        const res = await me(token);
+        setUser(res.data);
+    };
+
+    const handleAddComment = async (e) => {
+        e.preventDefault();
+        if (!newComment.trim() || !user) return;
+
+        const tempMessage = {
+            id: Date.now(),
+            message: newComment,
+            user: user,
+            pending: true,
+        };
+
+        setComments((prev) => [...prev, tempMessage]);
+        setNewComment("");
+
+        try {
+            await addComment(id, newComment, token);
+        } catch (error) {
+            console.error("Failed to send message:", error);
+        }
+    };
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [comments]);
+
+    useEffect(() => {
+        const load = async () => {
+            setLoading(true);
+            await Promise.all([fetchTicket(), fetchComments(), fetchUser()]);
+            setLoading(false);
+        };
+        load();
+
+        const echoInstance = echo(token);
+        const channel = echoInstance.private(`ticket.${id}`);
+
+        channel.listen("MessageSent", (e) => {
+            setComments((prev) => [...prev, e.comment]);
+        });
+
+        return () => echoInstance.leave(`ticket.${id}`);
+    }, [id]);
+
+    if (loading) return <p className="text-center text-gray-500 mt-10">Loading...</p>;
+    if (!ticket) return <p className="text-center text-gray-500 mt-10">Ticket not found.</p>;
+
+    return (
+        <div className="max-w-5xl mx-auto bg-white shadow rounded-xl p-8">
+            {}
+            <div className="border-b pb-4 mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">{ticket.subject}</h2>
+                <p className="text-gray-600 mt-1">{ticket.description}</p>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4 text-sm text-gray-700">
+                    <div>
+                        <span className="font-semibold">Category:</span> {ticket.category || "N/A"}
+                    </div>
+                    <div>
+                        <span className="font-semibold">Priority:</span>{" "}
+                        <span
+                            className={`${
+                                ticket.priority === "high"
+                                    ? "text-red-600"
+                                    : ticket.priority === "medium"
+                                        ? "text-yellow-600"
+                                        : "text-green-600"
+                            } font-semibold capitalize`}
+                        >
+                            {ticket.priority}
+                        </span>
+                    </div>
+                    <div>
+                        <span className="font-semibold">Status:</span>{" "}
+                        <span
+                            className={`px-2 py-1 rounded-full text-white text-xs ${
+                                ticket.status === "open"
+                                    ? "bg-blue-500"
+                                    : ticket.status === "in_progress"
+                                        ? "bg-yellow-500"
+                                        : "bg-green-500"
+                            }`}
+                        >
+                            {ticket.status}
+                        </span>
+                    </div>
+                    <div>
+                        <span className="font-semibold">Created By:</span>{" "}
+                        {ticket.user?.name || "Unknown"}
+                    </div>
+                </div>
+            </div>
+
+            {}
+            <div className="mt-8">
+                <h3 className="text-xl font-semibold text-gray-800 mb-3">Live Chat</h3>
+
+                <div className="border rounded-lg bg-gray-50 p-4 mb-4 max-h-[400px] overflow-y-auto">
+                    {comments.length === 0 && (
+                        <p className="text-gray-500 text-center py-10">
+                            No messages yet. Start the conversation below.
+                        </p>
+                    )}
+
+                    {comments.map((c) => (
+                        <div
+                            key={c.id}
+                            className={`flex mb-4 ${
+                                c.user?.id === user?.id ? "justify-end" : "justify-start"
+                            }`}
+                        >
+                            <div
+                                className={`p-3 rounded-lg shadow-sm max-w-[70%] ${
+                                    c.user?.id === user?.id
+                                        ? "bg-blue-500 text-white rounded-tr-none"
+                                        : "bg-gray-200 text-gray-800 rounded-tl-none"
+                                } ${c.pending ? "opacity-60" : ""}`}
+                            >
+                                <p className="text-sm">{c.message}</p>
+                                <p className="text-xs mt-1 opacity-75">
+                                    {c.user?.name} ({c.user?.role || "user"})
+                                </p>
+                            </div>
+                        </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                </div>
+
+                <form onSubmit={handleAddComment} className="flex items-center gap-2 border-t pt-4">
+                    <input
+                        type="text"
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="Type your message..."
+                        className="flex-1 border rounded-lg p-3 outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <button
+                        type="submit"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-lg shadow"
+                    >
+                        Send
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+}
