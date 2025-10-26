@@ -36,11 +36,8 @@ export default function TicketForm({ token }) {
             });
 
             await createTicket(data, token);
-
-            // Show success message
             setSuccessMessage("Your Ticket Has Been Successfully Published");
 
-            // Reset form
             setForm({
                 subject: "",
                 description: "",
@@ -49,11 +46,8 @@ export default function TicketForm({ token }) {
                 attachment: null,
             });
             setAttachmentName("");
-
-            // Optionally redirect after a short delay
             setTimeout(() => navigate("/tickets"), 1500);
         } catch (err) {
-            console.error("Error creating ticket:", err);
             alert(err.response?.data?.message || "Failed to create ticket");
         } finally {
             setLoading(false);
@@ -61,18 +55,18 @@ export default function TicketForm({ token }) {
     };
 
     return (
-        <div className="max-w-xl mx-auto bg-white shadow-xl rounded-xl p-8">
-            <h2 className="text-3xl font-bold mb-6 text-gray-800 text-center">
+        <div className="max-w-4xl mx-auto bg-white shadow-2xl rounded-2xl p-10 mt-10">
+            <h2 className="text-3xl font-bold mb-8 text-gray-800 text-center">
                 Add Ticket
             </h2>
 
             {successMessage && (
-                <div className="bg-green-100 text-green-800 p-3 rounded mb-4 text-center">
+                <div className="bg-green-100 text-green-800 p-3 rounded mb-6 text-center font-medium">
                     {successMessage}
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
                 <input
                     type="text"
                     name="subject"
@@ -86,7 +80,7 @@ export default function TicketForm({ token }) {
                 <textarea
                     name="description"
                     placeholder="Description"
-                    rows="4"
+                    rows="5"
                     className="border border-gray-300 p-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
                     value={form.description}
                     onChange={handleChange}
